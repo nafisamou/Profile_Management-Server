@@ -14,9 +14,15 @@ app.use(express.json());
 // create schema
 
 const userSchema = new mongoose.Schema({
-  name: String,
+  firstName: String,
+  lastName: String,
   email: String,
-  role: String
+  role: String,
+  department:String,
+  password:String,
+  createdTime: Date,
+  updatedTime: Date
+
 });
 // create model
 const AllUser = mongoose.model("AllUser", userSchema);
@@ -51,15 +57,20 @@ db();
   res.send(result);
 });
  */
-app.post("/users",async (req, res) => {
+app.post("/users", async (req, res) => {
   try {
     const newUsers = new AllUser({
-      name: req.body.name,
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
       email: req.body.email,
-      role: req.body.role,
+      department: req.body.department,
+      password: req.body.password,
+      createdTime: req.body.createdTime,
+      updatedTime: req.body.updatedTime,
+     
     });
     const userData = await newUsers.save();
-    res.status(201).send( userData);
+    res.status(201).send(userData);
     console.log(userData);
   } catch (error) {
     console.log(error);
@@ -72,7 +83,43 @@ app.get("/users", async (req, res) => {
   const query = {};
   const users = await AllUser.find(query);
   res.send(users);
+  console.log(users);
 });
+
+//---------- check admin-------
+app.put("/users/admin/:id", async (req, res) => {
+  const id = req.params.id;
+  const filter = { _id: id };
+  const options = { upsert: true };
+  const updatedDoc = {
+    $set: {
+      role: "admin",
+    },
+  };
+  const result = await AllUser.updateOne(filter, updatedDoc, options);
+  res.send(result);
+});
+
+
+
+app.get("/users/admin/:email", async (req, res) => {
+  const email = req.params.email;
+  const query = { email };
+  const user = await AllUser.findOne(query);
+  res.send({ isAdmin: user?.role === "admin" });
+});
+
+
+/* --------Delete------------- */
+    // ----delete user----
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: (id) };
+      const result = await AllUser.deleteOne(query);
+      res.send(result);
+    });
+
+
 
 app.get("/", (req, res) => {
   res.send("Hello From nafisa!");
