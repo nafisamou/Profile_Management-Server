@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 require("dotenv").config();
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 
 const port = process.env.PORT || 5000;
 const app = express();
@@ -18,14 +19,13 @@ const userSchema = new mongoose.Schema({
   lastName: String,
   email: String,
   role: String,
-  department:String,
-  password:String,
+  password: String,
   createdTime: Date,
-  updatedTime: Date
-
+  updatedTime: Date,
 });
 // create model
 const AllUser = mongoose.model("AllUser", userSchema);
+const UpdatedUser = mongoose.model("UpdatedUser", userSchema);
 
 // Mongodb connected
 mongoose.set("strictQuery", false);
@@ -58,20 +58,23 @@ db();
 });
  */
 app.post("/users", async (req, res) => {
+  console.log(req.body);
   try {
+    // const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(req.body.password, 5);
+    console.log(req.body.password);
+    console.log(hashedPassword);
     const newUsers = new AllUser({
       firstName: req.body.firstName,
       lastName: req.body.lastName,
       email: req.body.email,
-      department: req.body.department,
-      password: req.body.password,
+      role: req.body.role,
+      password: hashedPassword,
       createdTime: req.body.createdTime,
       updatedTime: req.body.updatedTime,
-     
     });
     const userData = await newUsers.save();
     res.status(201).send(userData);
-    console.log(userData);
   } catch (error) {
     console.log(error);
   }
@@ -99,8 +102,19 @@ app.put("/users/admin/:id", async (req, res) => {
   const result = await AllUser.updateOne(filter, updatedDoc, options);
   res.send(result);
 });
-
-
+// Edit User
+app.put("/users/edit/:id", async (req, res) => {
+  const id = req.params.id;
+  const filter = { _id: id };
+  const options = { upsert: true };
+  const updatedDoc = {
+    $set: {
+      Edit: "edit",
+    },
+  };
+  const result = await AllUser.updateOne(filter, updatedDoc, options);
+  res.send(result);
+});
 
 app.get("/users/admin/:email", async (req, res) => {
   const email = req.params.email;
@@ -108,18 +122,58 @@ app.get("/users/admin/:email", async (req, res) => {
   const user = await AllUser.findOne(query);
   res.send({ isAdmin: user?.role === "admin" });
 });
-
+app.get("/users/user/:email", async (req, res) => {
+  const email = req.params.email;
+  const query = { email };
+  const user = await AllUser.findOne(query);
+  res.send({ isUser: user?.role === "user" });
+});
 
 /* --------Delete------------- */
-    // ----delete user----
-    app.delete("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: (id) };
-      const result = await AllUser.deleteOne(query);
-      res.send(result);
-    });
+// ----delete user----
+app.delete("/users/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: id };
+  const result = await AllUser.deleteOne(query);
+  res.send(result);
+});
+
+app.get("/edit/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: id };
+  const result = await AllUser.findOne(query);
+  res.send(result);
+});
+
+app.put("/edit/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: id };
+  const user = req.body;
+  const options = { upsert: true };
+  const updateUser = {
+    $set: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+
+      email: user.email,
+    },
+  };
+
+  const result = await AllUser.updateMany(query, updateUser, options);
+  res.send(result);
+});
 
 
+app.get("/users/user", async (req, res) => {
+  const query = { role: "user" };
+  const users = await AllUser.find(query);
+  res.send(users);
+  });
+app.get("/users/admin", async (req, res) => {
+  const query = { role: "admin" };
+  const admins = await AllUser.find(query);
+  res.send(admins);
+  });
 
 app.get("/", (req, res) => {
   res.send("Hello From nafisa!");
