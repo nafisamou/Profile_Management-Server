@@ -6,11 +6,31 @@ const bcrypt = require("bcrypt");
 
 const port = process.env.PORT || 5000;
 const app = express();
-
+const jwt = require("jsonwebtoken");
 //middleware
 
 app.use(cors());
 app.use(express.json());
+
+/* Jwt token */
+
+// Jwt Token
+function verifyJWT(req, res, next) {
+  console.log("token inside verifyJWT", req.headers.authorization);
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send("unauthorized access");
+  }
+  // bearer  eta split(" ") kora hoilo
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
 
 // create schema
 
@@ -25,7 +45,7 @@ const userSchema = new mongoose.Schema({
 });
 // create model
 const AllUser = mongoose.model("AllUser", userSchema);
-const UpdatedUser = mongoose.model("UpdatedUser", userSchema);
+// const UpdatedUser = mongoose.model("UpdatedUser", userSchema);
 
 // Mongodb connected
 mongoose.set("strictQuery", false);
@@ -48,16 +68,19 @@ const db = (module.export = () => {
 });
 db();
 
-// User
-// as a buyer or as a seller sign up create:
-/* app.post("/users", async (req, res) => {
-  const user = req.body;
-  // console.log(user);
-  const result = await AllUser.insertOne(user);
-  res.send(result);
+app.get("/jwt", async (req, res) => {
+  const email = req.query.email;
+  const query = { email: email };
+  const user = await AllUser.findOne(query);
+  console.log(user);
+  if (user) {
+    const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {});
+    return res.send({ token: token });
+  }
+  res.status(403).send({ token: "" });
 });
- */
-app.post("/users", async (req, res) => {
+
+app.post("/users",verifyJWT, async (req, res) => {
   console.log(req.body);
   try {
     // const salt = await bcrypt.genSalt();
@@ -163,17 +186,16 @@ app.put("/edit/:id", async (req, res) => {
   res.send(result);
 });
 
-
 app.get("/users/user", async (req, res) => {
   const query = { role: "user" };
   const users = await AllUser.find(query);
   res.send(users);
-  });
+});
 app.get("/users/admin", async (req, res) => {
   const query = { role: "admin" };
   const admins = await AllUser.find(query);
   res.send(admins);
-  });
+});
 
 app.get("/", (req, res) => {
   res.send("Hello From nafisa!");
