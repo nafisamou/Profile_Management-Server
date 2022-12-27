@@ -1,4 +1,4 @@
-# Used Product Server-side Repository:
+# Server-side Repository:
 
 # Live Link
 * Hosted in Firebase ->[Task](https://clinquant-sprite-ec7382.netlify.app/)
